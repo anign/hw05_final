@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static%}
+{% block title %} Об авторе проекта {% endblock %}
+{% block content %}
+  <article>
+    <h5>Привет, я автор</h5>
+    <h6>
+      <div>
+       <p>
+         Антон И. фром Рязань.
+       </p>
+         <img src="{% static 'img\author.jpg' %}" width=400>
+         <p>Долгое время работал в сфере автоматизации производств.</p>
+         <p>Последний год в свободном плавании.</p>
+         <p>Компьютеры в моей жизни всегда занимали весомую часть. </p>
+         <p> К миру IT шел долгих 15 лет, пока наконец то не решился стать студеном Я.Практикума.</p>
+      </div>
+    </h6>
+    <div>
+      <p>
+        <a href='mailto: bakhus2009@yandex.ru' target="_ blank">
+         <img src="{% static '/img/email.png' %}" width="50" height="" alt="Написать на почту" title="Написать на почту">
+        </a>
+        <a href='https://t.me/avign' target="_ blank">
+          <img src="{% static '/img/tg.png' %}" width="50" height="" alt="Написать в Telegram" title="Написать в Telegram">
+        </a>
+        <a href='https://github.com/anign' target="_ blank">
+          <img src="{% static '/img/github.png' %}" width="50" height="" alt="GitHub" title="GitHub">
+        </a>
+      </p>
+    </div>
+  </article>
+{% endblock %}
+
+
