@@ -130,13 +130,14 @@ class PostFormTests(TestCase):
 
 class FollowAndCommentsTests(TestCase):
     def setUp(self):
+
         self.guest_client = Client()
         self.client_auth_follower = Client()
         self.user_follower = User.objects.create_user(username='follower')
         self.user_following = User.objects.create_user(username='following')
         self.post = Post.objects.create(
-            author=self.user_follower,
-            text='Тестовый коммент'
+            author=self.user_following,
+            text='Тестовая новая запись в ленте'
         )
         self.client_auth_follower.force_login(self.user_follower)
 
@@ -183,3 +184,14 @@ class FollowAndCommentsTests(TestCase):
             )
         )
         self.assertEqual(Follow.objects.all().count(), 0)
+
+    def test_subscription_feed(self):
+        """Новая запись пользователя появляется в ленте подписчиков"""
+        Follow.objects.create(user=self.user_follower,
+                              author=self.user_following)
+        response = self.client_auth_follower.get('/follow/')
+        first_object = response.context['page_obj'][0]
+        self.assertEqual(
+            first_object.text,
+            'Тестовая новая запись в ленте'
+        )
