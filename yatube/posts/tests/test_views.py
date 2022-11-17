@@ -179,13 +179,14 @@ class PostContextTests(TestCase):
             kwargs={'username': self.user.username})
         )
 
-    def test_cache_is_working_20_sec(self):
-        response_first = self.client.get(reverse("posts:index"))
-        response_first_cont = response_first.content
+    def test_cache_is_working(self):
+        response_first = self.client.get(reverse("posts:index")).content
         Post.objects.all().delete
-        response_sec = self.client.get(reverse("posts:index"))
-        response_sec_context = response_sec.content
-        self.assertEqual(response_first_cont, response_sec_context)
+        response_sec = self.client.get(reverse("posts:index")).content
+        self.assertEqual(response_first, response_sec)
+        cache.clear()
+        response_third = self.client.get(reverse("posts:index")).content
+        self.assertNotEqual(response_sec, response_third)
 
 
 class PostPaginatorTests(TestCase):

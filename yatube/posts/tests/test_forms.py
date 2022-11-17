@@ -1,3 +1,9 @@
+import shutil
+import tempfile
+from http import HTTPStatus
+
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -34,6 +40,11 @@ class PostFormTests(TestCase):
         self.authorized_client2 = Client()
         self.authorized_client2.force_login(self.user2)
 
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+
     def test_create_post(self):
         """Валидная форма создает пост."""
         posts_count = Post.objects.count()
@@ -55,10 +66,10 @@ class PostFormTests(TestCase):
         self.assertEqual(Post.objects.count(), posts_count + 1)
         post = Post.objects.first()
         self.assertEqual(post.text, 'Текст нового поста')
-        self.assertEqual(post.group.title, 'Тестовый заголовок')
+        self.assertEqual(post.group, self.group)
 
     def test_guest_client_cant_create_post(self):
-        Post.objects.all().delete()
+        initial_count = Post.objects.count()
         form_data = {
             'text': 'Текст нового поста',
             'group': self.group.id,
@@ -69,7 +80,7 @@ class PostFormTests(TestCase):
             follow=True
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(Post.objects.count(), 0)
+        self.assertEqual(Post.objects.count(), initial_count)
 
     def test_authorized_user_cant_edit_post(self):
         """Тест на невозможность редактирования существующей
@@ -94,9 +105,9 @@ class PostFormTests(TestCase):
             ),
         )
         post = Post.objects.get(id=self.post2.id)
-        self.assertNotEqual(
+        self.assertEqual(
             post.text,
-            form_data['text']
+            self.post2.text
         )
 
     def test_author_can_edit_post(self):
@@ -127,12 +138,44 @@ class PostFormTests(TestCase):
             form_data['text']
         )
 
+    def test_post_with_image_create_record(self):
+        "Форма создает запись поста с картинкой"
+        count_posts = Post.objects.count()
+        settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
+        form_data = {
+            'text': 'Тестовый пост с картинкой',
+            'group': self.group.id,
+            'image': uploaded
+        }
+        response = self.authorized_client.post(
+            reverse('posts:post_create'),
+            data=form_data,
+            follow=True,
+        )
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(Post.objects.count(), count_posts + 1)
+
 
 class FollowAndCommentsTests(TestCase):
     def setUp(self):
 
         self.guest_client = Client()
         self.client_auth_follower = Client()
+        self.new_authorized_user = Client()
+        self.new_user = User.objects.create_user(username='user3')
         self.user_follower = User.objects.create_user(username='follower')
         self.user_following = User.objects.create_user(username='following')
         self.post = Post.objects.create(
@@ -140,6 +183,7 @@ class FollowAndCommentsTests(TestCase):
             text='Тестовая новая запись в ленте'
         )
         self.client_auth_follower.force_login(self.user_follower)
+        self.new_authorized_user.force_login(self.new_user)
 
     def test_authorized_user_can_follow(self):
         "Зарегистрированный юзер может подписаться."
@@ -186,12 +230,22 @@ class FollowAndCommentsTests(TestCase):
         self.assertEqual(Follow.objects.all().count(), 0)
 
     def test_subscription_feed(self):
-        """Новая запись пользователя появляется в ленте подписчиков"""
+        "Новая запись пользователя появляется в ленте подписчиков"
         Follow.objects.create(user=self.user_follower,
                               author=self.user_following)
         response = self.client_auth_follower.get('/follow/')
         first_object = response.context['page_obj'][0]
         self.assertEqual(
             first_object.text,
+            'Тестовая новая запись в ленте'
+        )
+
+    def test_subscription_not_feed(self):
+        "Новая запись пользователя не появляется в ленте у неподписанных"
+        Follow.objects.create(user=self.user_follower,
+                              author=self.user_following)
+        response = self.new_authorized_user.get('/follow/')
+        self.assertNotContains(
+            response,
             'Тестовая новая запись в ленте'
         )

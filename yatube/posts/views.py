@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.cache import cache_page
@@ -34,7 +33,6 @@ def group_posts(request, slug):
     page_obj = make_pages(request, posts)
     context = {
         'group': group,
-        'posts': posts,
         'page_obj': page_obj,
     }
     return render(request, template, context)
@@ -60,7 +58,7 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
     count = Post.objects.filter(author=post.author).count()
-    form = CommentForm(request.POST or None)
+    form = CommentForm()
     comments_list = post.comments.all()
     context = {
         'post': post,
@@ -84,8 +82,6 @@ def post_create(request):
             post.author = request.user
             post.save()
             return redirect('posts:profile', post.author)
-        else:
-            return render(request, 'posts/create_post.html', {'form': form})
     return render(request, 'posts/create_post.html', {'form': form})
 
 
@@ -137,11 +133,10 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
-    user = request.user
     author = get_object_or_404(User, username=username)
-    if author != user:
+    if author != request.user:
         Follow.objects.get_or_create(
-            user=user,
+            user=request.user,
             author=author
         )
     return redirect(reverse('posts:profile', kwargs={'username': username}))
