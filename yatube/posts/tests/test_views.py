@@ -6,20 +6,21 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..models import Group, Post
 
 User = get_user_model()
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostContextTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # Временная папка для медиа-файлов;
-        settings.MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -49,7 +50,7 @@ class PostContextTests(TestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(settings.MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         cache.clear()
@@ -181,7 +182,6 @@ class PostContextTests(TestCase):
 
     def test_cache_is_working(self):
         response_first = self.client.get(reverse("posts:index")).content
-        Post.objects.all().delete
         response_sec = self.client.get(reverse("posts:index")).content
         self.assertEqual(response_first, response_sec)
         cache.clear()
