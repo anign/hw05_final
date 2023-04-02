@@ -18,7 +18,7 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 
 sentry_sdk.init(
-    dsn="f9db9548d0eb11edb60a76176438fab0",
+    dsn="https://88890fda28be4df4824b6402a54fa381@o4504941664141312.ingest.sentry.io/4504941669842944",
     integrations=[DjangoIntegration()],
 )
 
