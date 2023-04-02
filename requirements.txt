@@ -10,3 +10,4 @@ sorl-thumbnail==12.7.0
 Faker==12.0.1
 psycopg2-binary
 python-dotenv
+sentry-sdk
